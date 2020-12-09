@@ -1,0 +1,9 @@
+flask db init
+flask db migrate
+flask db upgrade
+
+alembic init alembic
+alembic revision --autogenerate
+alembic upgrade head
+
+alembic stamp head
