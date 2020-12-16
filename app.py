@@ -1,9 +1,62 @@
+from flask_sqlalchemy import SQLAlchemy
+from flask import Flask
+from models import *
 from flask import request, jsonify, json
+from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
-from package import app, db
-from models import User, UserCourses, Course
+
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqlconnector://{user}:{password}@{server}/{database}'.format(
+    user='root', password='j27333', server='localhost', database='test')
+db = SQLAlchemy(app)
+
+engine = db.engine
+Base = db.Model
+
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+
+@app.route('/api/v1/hello-world-28!')
+def number_display():
+    return 'Hello, World - 28', 200
+
+
+auth = HTTPBasicAuth()
+with app.app_context():
+    Users = User.query.all()
+    res = dict()
+    for i in range(len(Users)):
+        res[Users[i].Username] = generate_password_hash(Users[i].Password)
+    #users = json(res)
+# users = {
+#     "john": generate_password_hash("hello"),
+#     "susan": generate_password_hash("bye")
+# }
+
+
+@auth.verify_password
+def verify_password(username, password):
+    if username in res and check_password_hash(res.get(username), password):
+        return username
+
+
+@auth.get_user_roles
+def get_user_roles(username):
+    user = User.query.filter_by(Username=username).first()
+    return user.get_roles()
+# @app.route('/')
+# def main_page():
+#     return "Hello, World!"
+#
+#
+# @app.route('/api/v1/hello-world-13')
+# def option():
+#     return "Hello, World 13!"
+
 
 @app.route('/user/', methods=['POST'])
 def create_user():
@@ -25,6 +78,7 @@ def create_user():
                         Password=password, Phone=phone, UserStatus=userStatus)
         db.session.add(crd_user)
         db.session.commit()
+        res[username]=generate_password_hash(password)
         return jsonify(status='created', id=crd_user.UserID, username=crd_user.Username, firstName=firstname, lastName=lastname,
                         email=email, password=crd_user.Password, phone=phone, userSatus=userStatus), 201
     else:
@@ -32,7 +86,11 @@ def create_user():
 
 
 @app.route('/user/<username>', methods=['GET', 'PUT', 'DELETE'])
+@auth.login_required(role='student')
 def userId(username):
+    logged_user = auth.current_user()
+    if logged_user != username:
+        return jsonify(status='Access denied'), 403
     user = User.query.filter_by(Username=username).first()
 
     if user is None:
@@ -98,7 +156,11 @@ def userId(username):
 
 
 @app.route('/user/<username>/courses/', methods=['GET'])
+@auth.login_required(role='student')
 def userCourses(username):
+    logged_user = auth.current_user()
+    if logged_user != username:
+        return jsonify(status='Access denied'), 403
     courses = UserCourses.query.filter(UserCourses.username == username).all()
     user = User.query.filter_by(Username=username).first()
     res = dict()
@@ -114,7 +176,11 @@ def userCourses(username):
 
 
 @app.route('/user/<username>/apply/<course_name>/', methods=['POST'])
+@auth.login_required(role='student')
 def apply_for_course(username, course_name):
+    logged_user = auth.current_user()
+    if logged_user != username:
+        return jsonify(status='Access denied'), 403
     userc = UserCourses.query.filter((UserCourses.username == username) & (UserCourses.Courses_names == course_name)).first()
     user = User.query.filter_by(Username=username).first()
     course = Course.query.filter_by(Name=course_name).first()
@@ -135,6 +201,7 @@ def apply_for_course(username, course_name):
 
 
 @app.route('/course/', methods=['POST'])
+@auth.login_required(role='teacher')
 def create_course():
     category = request.json.get('category')
     name = request.json.get('name')
@@ -158,6 +225,7 @@ def create_course():
 
 
 @app.route('/courses/', methods=['GET'])
+@auth.login_required(role='teacher')
 def create_all_courses():
     courses = Course.query.all()
     courses_list = []
@@ -170,6 +238,7 @@ def create_all_courses():
 
 
 @app.route('/course/<course_name>/', methods=['GET', 'PUT', 'DELETE'])
+@auth.login_required(role='teacher')
 def update_course(course_name):
     find_course = Course.query.filter_by(Name=course_name).first()
     if not find_course:
@@ -214,6 +283,7 @@ def update_course(course_name):
 
 
 @app.route('/course/<username>/<course_name>/', methods=['PUT'])
+@auth.login_required(role='teacher')
 def val_requests(username, course_name):
     cur_request = UserCourses.query.filter((UserCourses.username == username) & (UserCourses.Courses_names == course_name)).first()
     requests = UserCourses.query.filter(UserCourses.Courses_names == course_name).all()
@@ -238,9 +308,4 @@ def val_requests(username, course_name):
                        request_status=request_status), 200
     else:
         return jsonify(status="Bad data"), 400
-
-
-
-
-
-
+app.run(debug=True)
