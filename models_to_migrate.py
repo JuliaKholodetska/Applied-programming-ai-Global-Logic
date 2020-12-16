@@ -1,9 +1,9 @@
-from migr import db
+from migrate import db
+from werkzeug.security import generate_password_hash
 
-BaseModel = db.Model
+Base = db.Model
 
-
-class User(BaseModel):
+class User(Base):
     __tablename__ = 'User'
 
     UserID = db.Column(db.INTEGER, autoincrement=True)
@@ -19,7 +19,7 @@ class User(BaseModel):
         return self.UserStatus
 
 
-class Course(BaseModel):
+class Course(Base):
     __tablename__ = 'Course'
 
     ID = db.Column(db.INTEGER)
@@ -38,7 +38,7 @@ class Course(BaseModel):
         return result
 
 
-class UserCourses(BaseModel):
+class UserCourses(Base):
     __tablename__ = 'UserCourses'
 
     ID = db.Column(db.INTEGER, primary_key=True)
