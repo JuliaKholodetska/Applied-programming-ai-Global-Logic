@@ -11,7 +11,6 @@ import json
 
 from models import User, Course, UserCourses
 
-
 class TestingViews(TestCase):
 
     # creates instance of flask app
