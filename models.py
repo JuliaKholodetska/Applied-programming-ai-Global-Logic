@@ -2,7 +2,7 @@ from migrate import db
 # from app import db
 from werkzeug.security import generate_password_hash
 
-# Base = db.Model
+Base = db.Model
 
 class User(db.Model):
     __tablename__ = 'User'
